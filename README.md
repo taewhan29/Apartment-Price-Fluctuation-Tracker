@@ -1,9 +1,6 @@
 # 🏢 전국 아파트 실거래가 무인 자동 수집 & 핀테크 대시보드
 
-> **🌐 Streamlit Cloud 배포 주소**: [https://apartment-price-tracker.streamlit.app/](https://apartment-price-tracker.streamlit.app/) *(배포 완료 후 즉시 접속 가능)*  
-> **매일 오전 7시(KST) 무인 자동 실행 및 날짜별 데이터 누적 모니터링 시스템**  
-> GitHub Actions 스케줄러가 매일 아침 공공데이터 포털 API를 통해 대한민국 17개 시/도 실거래가 데이터를 수집하여 날짜별 파일(`data/history/apt_trade_YYYY-MM-DD.json`)로 누적 기록합니다.
-
+> **🌐 Streamlit Cloud 배포 주소**: (https://apartment-price-fluctuation-tracker.streamlit.app/)
 ---
 
 ## 🌟 주요 특징
