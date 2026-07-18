@@ -1,0 +1,19 @@
+{
+  "last_updated": "2026-07-18 18:22:17",
+  "mode": "시뮬레이션 데모 데이터",
+  "is_demo": true,
+  "trade_count": 120,
+  "rent_count": 120,
+  "recent_logs": [
+    {
+      "timestamp": "2026-07-18 18:22:17",
+      "title": "자동 수집 완료",
+      "message": "시뮬레이션 데모 데이터 조회를 통해 매매 120건, 전월세 120건 데이터 갱신 완료."
+    },
+    {
+      "timestamp": "2026-07-18 18:22:17",
+      "title": "시스템 상태 정상",
+      "message": "GitHub Actions 스케줄러 수집 작업이 성공적으로 실행되었습니다."
+    }
+  ]
+}
