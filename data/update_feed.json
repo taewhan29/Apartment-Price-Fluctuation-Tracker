@@ -1,20 +1,15 @@
 {
-  "last_updated": "2026-07-18 09:51:18",
-  "mode": "전국 17개 시/도 시뮬레이션 데이터",
-  "is_demo": true,
-  "trade_count": 762,
-  "rent_count": 762,
+  "last_updated": "2026-07-18 19:28:24",
+  "mode": "국토교통부 OpenAPI 실시간 실거래 데이터 전용",
+  "is_demo": false,
+  "trade_count": 0,
+  "rent_count": 0,
   "history_file": "apt_trade_2026-07-18.json",
   "recent_logs": [
     {
-      "timestamp": "2026-07-18 09:51:18",
-      "title": "날짜별 히스토리 누적 완료 (2026-07-18)",
-      "message": "매일 오전 07:00 KST 수집 데이터가 data/history/apt_trade_2026-07-18.json 에 파일로 누적 기록되었습니다."
-    },
-    {
-      "timestamp": "2026-07-18 09:51:18",
-      "title": "전국 17개 시/도 데이터 커버리지",
-      "message": "서울 25개 구, 경기 31개 시군 등 250개 시/군/구 전역 포함 (매매 762건, 전월세 762건)."
+      "timestamp": "2026-07-18 19:28:24",
+      "title": "실제 데이터 수집 완료 (2026-07-18)",
+      "message": "국토교통부 API 수집 결과: 매매 0건, 전월세 0건 저장 완료."
     }
   ]
 }
