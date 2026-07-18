@@ -33,10 +33,10 @@ jobs:
         run: |
           python collector.py
 
-      - name: Commit and Push updated data files
+      - name: Commit and Push accumulated data files
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "chrono: 매일 07:00 KST 아파트 실거래가 자동 수집 갱신 [skip ci]"
-          file_pattern: "data/*.json"
+          commit_message: "chrono: 매일 07:00 KST 아파트 실거래가 날짜별 데이터 누적 저장 [skip ci]"
+          file_pattern: "data/**"
           commit_user_name: "github-actions[bot]"
           commit_user_email: "github-actions[bot]@users.noreply.github.com"

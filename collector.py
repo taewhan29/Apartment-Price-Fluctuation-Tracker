@@ -6,7 +6,7 @@ import requests
 import xmltodict
 from dateutil.relativedelta import relativedelta
 
-# `.env` 파일이 존재할 경우 자동 로드 헬퍼
+# `.env` 파일 로드
 def load_env_file():
     env_path = os.path.join(os.path.dirname(__file__), ".env")
     if os.path.exists(env_path):
@@ -113,20 +113,21 @@ NATIONWIDE_REGIONS = {
     }
 }
 
-# API 엔드포인트
 TRADE_API_URL = "http://openapi.molit.go.kr/OpenAPI_ToolInstallPackage/service/rest/RTMSOBJSvc/getRTMSDataSvcAptTradeDev"
 RENT_API_URL = "http://openapi.molit.go.kr/OpenAPI_ToolInstallPackage/service/rest/RTMSOBJSvc/getRTMSDataSvcAptRentDev"
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
+HISTORY_DIR = os.path.join(DATA_DIR, "history")
 
 
-def ensure_data_dir():
+def ensure_dirs():
     if not os.path.exists(DATA_DIR):
         os.makedirs(DATA_DIR, exist_ok=True)
+    if not os.path.exists(HISTORY_DIR):
+        os.makedirs(HISTORY_DIR, exist_ok=True)
 
 
 def get_recent_months(count=2):
-    """최근 N개월 YYYYMM 리스트 반환"""
     months = []
     now = datetime.datetime.now()
     for i in range(count):
@@ -136,7 +137,6 @@ def get_recent_months(count=2):
 
 
 def fetch_from_api(url, service_key, lawd_cd, deal_ymd):
-    """공공데이터 포털 API 호출"""
     params = {
         "serviceKey": service_key,
         "LAWD_CD": lawd_cd,
@@ -165,22 +165,18 @@ def fetch_from_api(url, service_key, lawd_cd, deal_ymd):
 
 
 def generate_fallback_data():
-    """API 키 미설정 시 전국 17개 시/도 전체를 아우르는 풍부한 시뮬레이션 데모 데이터 생성"""
     print("[INFO] API 인증키 미설정으로 대한민국 17개 시/도 전역 샘플 데이터를 생성합니다.")
     
     trade_list = []
     rent_list = []
     now = datetime.datetime.now()
     
-    # 17개 시/도의 모든 구/군에서 샘플 생성
     for sido, gu_dict in NATIONWIDE_REGIONS.items():
         for lawd_cd, gu_name in gu_dict.items():
-            # 구별로 2~4개 거래 생성
             for idx in range(random.randint(2, 4)):
                 days_ago = random.randint(0, 59)
                 deal_date = now - datetime.timedelta(days=days_ago)
                 
-                # 시도별 시세 반영
                 base_mult = 1.0
                 if "서울" in sido: base_mult = 2.5
                 elif "경기" in sido or "인천" in sido: base_mult = 1.6
@@ -209,7 +205,6 @@ def generate_fallback_data():
                 }
                 trade_list.append(trade_item)
                 
-                # 전월세
                 rent_type = random.choice(["전세", "전세", "월세"])
                 deposit = int(base_price * random.uniform(0.5, 0.65))
                 monthly = int(random.uniform(50, 180)) if rent_type == "월세" else 0
@@ -242,7 +237,7 @@ def generate_fallback_data():
 
 
 def run_collection():
-    ensure_data_dir()
+    ensure_dirs()
     service_key = os.getenv("DATA_GO_KR_SERVICE_KEY", "").strip()
     
     trade_results = []
@@ -320,7 +315,7 @@ def run_collection():
             print("[WARN] API 호출 응답이 없어 시뮬레이션 샘플 데이터로 전환합니다.")
             trade_results, rent_results, is_demo = generate_fallback_data()
 
-    # 파일 저장
+    # 1. 최신 메인 데이터 파일 저장 (덮어쓰기 최신 캐시)
     trade_path = os.path.join(DATA_DIR, "apt_trade.json")
     rent_path = os.path.join(DATA_DIR, "apt_rent.json")
     feed_path = os.path.join(DATA_DIR, "update_feed.json")
@@ -329,6 +324,17 @@ def run_collection():
         json.dump(trade_results, f, ensure_ascii=False, indent=2)
         
     with open(rent_path, "w", encoding="utf-8") as f:
+        json.dump(rent_results, f, ensure_ascii=False, indent=2)
+        
+    # 2. 📌 날짜별 히스토리 데이터 파일 누적 저장 (history/ 디렉터리)
+    today_str = datetime.datetime.now().strftime("%Y-%m-%d")
+    hist_trade_path = os.path.join(HISTORY_DIR, f"apt_trade_{today_str}.json")
+    hist_rent_path = os.path.join(HISTORY_DIR, f"apt_rent_{today_str}.json")
+    
+    with open(hist_trade_path, "w", encoding="utf-8") as f:
+        json.dump(trade_results, f, ensure_ascii=False, indent=2)
+        
+    with open(hist_rent_path, "w", encoding="utf-8") as f:
         json.dump(rent_results, f, ensure_ascii=False, indent=2)
         
     now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -340,16 +346,17 @@ def run_collection():
         "is_demo": is_demo,
         "trade_count": len(trade_results),
         "rent_count": len(rent_results),
+        "history_file": f"apt_trade_{today_str}.json",
         "recent_logs": [
             {
                 "timestamp": now_str,
-                "title": "대한민국 전역 수집 성공",
-                "message": f"현재 시각({now_str}) 기준 17개 시/도 전역 매매 {len(trade_results):,}건, 전월세 {len(rent_results):,}건 수집 완료."
+                "title": f"날짜별 히스토리 누적 완료 ({today_str})",
+                "message": f"매일 오전 07:00 KST 수집 데이터가 data/history/apt_trade_{today_str}.json 에 파일로 누적 기록되었습니다."
             },
             {
                 "timestamp": now_str,
-                "title": "전국 커버리지",
-                "message": "서울 25개 구, 경기 31개 시군, 인천, 5대 광역시, 강원, 충청, 전라, 경상, 제주 전역 포함."
+                "title": "전국 17개 시/도 데이터 커버리지",
+                "message": f"서울 25개 구, 경기 31개 시군 등 250개 시/군/구 전역 포함 (매매 {len(trade_results):,}건, 전월세 {len(rent_results):,}건)."
             }
         ]
     }
@@ -357,7 +364,7 @@ def run_collection():
     with open(feed_path, "w", encoding="utf-8") as f:
         json.dump(feed_data, f, ensure_ascii=False, indent=2)
 
-    print(f"[SUCCESS] 현재 시각 전국 데이터 수집 완료: 매매 {len(trade_results)}건 / 전월세 {len(rent_results)}건 ({mode_str})")
+    print(f"[SUCCESS] 현재 시각 전국 데이터 누적 수집 완료: history/apt_trade_{today_str}.json (매매 {len(trade_results)}건 / 전월세 {len(rent_results)}건)")
 
 
 if __name__ == "__main__":

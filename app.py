@@ -1,5 +1,6 @@
 import os
 import json
+import glob
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -7,7 +8,7 @@ import streamlit as st
 
 # 1. 페이지 초기 설정 및 커스텀 미니멀 CSS
 st.set_page_config(
-    page_title="Apartment Price Tracker | 실거래가 대시보드",
+    page_title="Apartment Price Tracker | 실거래가 모니터링",
     page_icon="🏢",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -18,21 +19,18 @@ PREMIUM_SAAS_CSS = """
 <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
     
-    /* 글로벌 폰트 및 여백 */
     html, body, [class*="css"] {
         font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
         background-color: #ffffff;
         color: #0f172a;
     }
 
-    /* 메인 컨테이너 과감한 넉넉한 padding */
     .block-container {
         padding-top: 2.5rem !important;
         padding-bottom: 5rem !important;
         max-width: 1280px;
     }
     
-    /* 라이브 상단 헤더 & 에메랄드 펄스 뱃지 */
     .header-wrapper {
         display: flex;
         justify-content: space-between;
@@ -82,7 +80,6 @@ PREMIUM_SAAS_CSS = """
         100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
     }
     
-    /* 럭셔리 KPI 메트릭 카드 */
     .kpi-card-premium {
         background: #ffffff;
         border: 1px solid #e2e8f0;
@@ -117,7 +114,6 @@ PREMIUM_SAAS_CSS = """
         font-weight: 500;
     }
     
-    /* 실시간 뉴스 & 피드 컴포넌트 */
     .feed-drawer {
         background-color: #0f172a;
         color: #f8fafc;
@@ -150,7 +146,6 @@ PREMIUM_SAAS_CSS = """
         margin-top: 0.4rem;
     }
     
-    /* stTab 스타일 업그레이드 */
     .stTabs [data-baseweb="tab-list"] {
         gap: 2rem;
         border-bottom: 2px solid #f1f5f9;
@@ -166,18 +161,12 @@ PREMIUM_SAAS_CSS = """
         color: #0f172a !important;
         border-bottom-color: #0f172a !important;
     }
-    
-    /* 테이블 둥근 스타일링 */
-    .stDataFrame {
-        border-radius: 12px;
-        overflow: hidden;
-        border: 1px solid #f1f5f9;
-    }
 </style>
 """
 st.markdown(PREMIUM_SAAS_CSS, unsafe_allow_html=True)
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
+HISTORY_DIR = os.path.join(DATA_DIR, "history")
 
 
 @st.cache_data(ttl=60)
@@ -190,11 +179,27 @@ def load_data():
     rent_df = pd.DataFrame()
     feed_info = {}
     
-    if os.path.exists(trade_path):
+    # 📌 날짜별 히스토리 파일이 존재하는 경우 모든 누적 히스토리 자동 병합
+    hist_trade_files = glob.glob(os.path.join(HISTORY_DIR, "apt_trade_*.json"))
+    hist_rent_files = glob.glob(os.path.join(HISTORY_DIR, "apt_rent_*.json"))
+    
+    if hist_trade_files:
+        trade_list = []
+        for file_p in hist_trade_files:
+            with open(file_p, "r", encoding="utf-8") as f:
+                trade_list.extend(json.load(f))
+        trade_df = pd.DataFrame(trade_list).drop_duplicates()
+    elif os.path.exists(trade_path):
         with open(trade_path, "r", encoding="utf-8") as f:
             trade_df = pd.DataFrame(json.load(f))
             
-    if os.path.exists(rent_path):
+    if hist_rent_files:
+        rent_list = []
+        for file_p in hist_rent_files:
+            with open(file_p, "r", encoding="utf-8") as f:
+                rent_list.extend(json.load(f))
+        rent_df = pd.DataFrame(rent_list).drop_duplicates()
+    elif os.path.exists(rent_path):
         with open(rent_path, "r", encoding="utf-8") as f:
             rent_df = pd.DataFrame(json.load(f))
             
@@ -202,30 +207,30 @@ def load_data():
         with open(feed_path, "r", encoding="utf-8") as f:
             feed_info = json.load(f)
             
-    return trade_df, rent_df, feed_info
+    return trade_df, rent_df, feed_info, len(hist_trade_files)
 
 
-trade_df, rent_df, feed_info = load_data()
+trade_df, rent_df, feed_info, history_file_count = load_data()
 
-# 2. 브랜드 헤더 레인
-last_updated = feed_info.get("last_updated", "실시간 수집 완료")
+# 2. 브랜드 헤더
+last_updated = feed_info.get("last_updated", "실시간 무인 수집 중")
 mode_title = feed_info.get("mode", "전국 시뮬레이션 실거래 데이터")
 
 st.markdown(f"""
 <div class="header-wrapper">
     <div>
         <div class="brand-title">전국 아파트 실거래가 모니터링</div>
-        <div class="brand-subtitle">국토교통부 실시간 데이터를 기반으로 분석된 핀테크 모니터링 대시보드</div>
+        <div class="brand-subtitle">매일 KST 07:00 무인 자동 수집 & 날짜별 데이터 누적 모니터링 시스템</div>
     </div>
     <div class="live-badge">
         <div class="pulse-dot"></div>
-        <span>LIVE AUTO PIPELINE</span>
+        <span>DAILY AUTO PIPELINE</span>
     </div>
 </div>
 """, unsafe_allow_html=True)
 
 
-# 3. 사이드바 - 전국 2단계 스마트 지역 필터 & 컨트롤
+# 3. 사이드바 - 전국 2단계 스마트 지역 필터 & 무인 자동화 상태
 with st.sidebar:
     st.markdown("### 🎛️ 전국 지역 검색 필터")
     
@@ -235,7 +240,7 @@ with st.sidebar:
         sido_list += sorted(trade_df["시도"].unique().tolist())
     selected_sido = st.selectbox("시 / 도 선택", sido_list)
     
-    # 2단계: 구/군 선택 (가변)
+    # 2단계: 구/군 선택
     gu_list = ["전체"]
     if selected_sido != "전체" and not trade_df.empty and "구군" in trade_df.columns:
         filtered_gu = trade_df[trade_df["시도"] == selected_sido]["구군"].unique().tolist()
@@ -251,22 +256,23 @@ with st.sidebar:
     area_options = ["전체", "59㎡ 이하 (소형)", "59㎡ ~ 84㎡ (중형)", "84㎡ ~ 114㎡ (중대형)", "114㎡ 초과 (대형)"]
     selected_area = st.selectbox("전용면적 그룹", area_options)
     
-    # 📌 최근 업데이트 피드 Drawer (구석 실시간 피드)
+    # 최근 업데이트 피드 Drawer (무인 자동화 일별 누적 상태)
     st.markdown("""
     <div class="feed-drawer">
         <div class="feed-title">⚡ Live Activity Feed</div>
         <div class="feed-body">
             <strong>최근 수집:</strong> {time}<br/>
-            <strong>데이터 상태:</strong> {mode}<br/>
-            <div class="feed-chip">매매 {t_cnt:,}건</div>
-            <div class="feed-chip">전월세 {r_cnt:,}건</div>
+            <strong>수집 방식:</strong> 매일 07:00 KST 무인 자동화<br/>
+            <strong>일별 누적 파일:</strong> {hist_cnt}개 일자 기록됨<br/>
+            <div class="feed-chip">총 누적 매매 {t_cnt:,}건</div>
+            <div class="feed-chip">총 누적 전월세 {r_cnt:,}건</div>
         </div>
     </div>
     """.format(
         time=last_updated,
-        mode=mode_title,
-        t_cnt=feed_info.get("trade_count", 0),
-        r_cnt=feed_info.get("rent_count", 0)
+        hist_cnt=max(history_file_count, 1),
+        t_cnt=len(trade_df),
+        r_cnt=len(rent_df)
     ), unsafe_allow_html=True)
 
 
@@ -321,7 +327,6 @@ with tab_trade:
         min_p = f_trade["거래금액_숫자"].min()
         total_c = len(f_trade)
         
-        # 4개의 상용 메트릭 카드 넉넉한 여백배치
         col1, col2, col3, col4 = st.columns(4)
         with col1:
             st.markdown(f"""
@@ -353,15 +358,14 @@ with tab_trade:
         with col4:
             st.markdown(f"""
             <div class="kpi-card-premium">
-                <div class="kpi-tag">조회 거래 건수</div>
+                <div class="kpi-tag">누적 거래량</div>
                 <div class="kpi-val">{total_c:,} 건</div>
-                <div class="kpi-sub-text">실시간 수집 실거래 내역</div>
+                <div class="kpi-sub-text">일별 누적 모니터링 내역</div>
             </div>
             """, unsafe_allow_html=True)
             
         st.markdown("<br/><br/>", unsafe_allow_html=True)
         
-        # 시세 추이 & 단지별 시세 고급 Plotly 차트
         graph_col1, graph_col2 = st.columns([1.6, 1])
         with graph_col1:
             st.markdown("### 📈 일자별 시세 변동 트렌드")
@@ -458,7 +462,7 @@ with tab_rent:
         with rc3:
             st.markdown(f"""
             <div class="kpi-card-premium">
-                <div class="kpi-tag">전·월세 거래량</div>
+                <div class="kpi-tag">누적 전·월세 거래량</div>
                 <div class="kpi-val">{total_r:,} 건</div>
                 <div class="kpi-sub-text">선택 조건 거래 건수</div>
             </div>
@@ -467,7 +471,7 @@ with tab_rent:
         st.markdown("<br/><br/>", unsafe_allow_html=True)
         st.markdown("### 📋 전·월세 실거래 내역 리스트")
         r_cols = ["계약일자", "구분", "시도", "구군", "법정동", "아파트", "전용면적", "층", "보증금액", "월세금액"]
-        available_r_cols = [c for c in r_cols if c in display_r.columns]
+        available_r_cols = [c for c in display_r.columns if c in r_cols]
         st.dataframe(
             display_r[available_r_cols],
             use_container_width=True,
