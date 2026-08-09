@@ -1,14 +1,14 @@
 {
-  "last_updated": "2026-08-08 22:31:02",
+  "last_updated": "2026-08-09 22:32:34",
   "mode": "국토교통부 OpenAPI 실시간 실거래 데이터 전용",
   "is_demo": false,
   "trade_count": 0,
   "rent_count": 0,
-  "history_file": "apt_trade_2026-08-08.json",
+  "history_file": "apt_trade_2026-08-09.json",
   "recent_logs": [
     {
-      "timestamp": "2026-08-08 22:31:02",
-      "title": "실제 데이터 수집 완료 (2026-08-08)",
+      "timestamp": "2026-08-09 22:32:34",
+      "title": "실제 데이터 수집 완료 (2026-08-09)",
       "message": "국토교통부 API 수집 결과: 매매 0건, 전월세 0건 저장 완료."
     }
   ]
